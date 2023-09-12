@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-
+import { getDatabase, ref, get, set } from "firebase/database";
+import { v4 as uuid } from "uuid";
 import {
   getAuth,
   signInWithPopup,
@@ -18,27 +19,45 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth();
 const provider = new GoogleAuthProvider();
-
-export async function login() {
-  return signInWithPopup(auth, provider)
-    .then((result) => {
-      const user = result.user;
-      console.log(user);
-      return user;
-    })
-    .catch(console.error);
+const database = getDatabase(app);
+export function login() {
+  signInWithPopup(auth, provider).catch(console.error);
 }
 
-export async function logout() {
-  return signOut(auth)
-    .then(() => null)
-    .catch((error) => {
-      // An error happened.
-    });
+export function logout() {
+  signOut(auth).catch((error) => {});
 }
 
 export function onUserStateChange(callback) {
-  onAuthStateChanged(auth, (user) => {
-    callback(user);
+  onAuthStateChanged(auth, async (user) => {
+    // 1. 사용자가 있는 경우 (로그인 한 경우)
+    const updatedUser = user ? await adminUser(user) : null;
+    callback(updatedUser);
+  });
+}
+
+async function adminUser(user) {
+  return get(ref(database, "admins")).then((snapshot) => {
+    if (snapshot.exists()) {
+      const admins = snapshot.val();
+
+      // 2. 사용자가 admin권한을 가지고 있는지 확인
+      // 3. {...user, isAdmin: true/false}
+      // 4. 위처럼 user객체에 admin 상태를 포함시키기
+      const isAdmin = admins.includes(user.uid);
+      return { ...user, isAdmin };
+    }
+    return user;
+  });
+}
+
+export async function addNewProduct(product, image) {
+  const id = uuid();
+  return set(ref(database, `products/${id})`), {
+    ...product,
+    id,
+    price: parseInt(product.price),
+    image,
+    options: product.options.split(","),
   });
 }
