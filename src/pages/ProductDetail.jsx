@@ -1,16 +1,25 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
+
 import Button from "../components/ui/Button";
+import useCarts from "../hooks/useCarts";
 
 export default function ProductDetail() {
   const { state: product } = useLocation();
   const [selected, setSelected] = useState(
     product.options && product.options[0]
   );
+
+  const { addCart } = useCarts();
+
   const onChangeHandler = (e) => {
     setSelected(e.target.value);
   };
-  const onClickHandler = () => {};
+  const onClickHandler = () => {
+    const updatedProduct = { ...product, options: selected, quantity: 1 };
+    addCart.mutate(updatedProduct);
+  };
+
   return (
     <div className="p-3">
       <p className="mx-12 mt-4 text-gray-700">{product.category}</p>
